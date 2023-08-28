@@ -17,6 +17,8 @@
 #define LCD_D7_PIN 11
 #define LCD_A_PIN 12
 
+#define INPUT_BUFFER_SIZE 64
+
 #define PROMPT_STR "> "
 
 void lcd_init_gpio(void) {
@@ -51,4 +53,14 @@ int main() {
     lcd_init_gpio();
 
     printf("LCD <-> UART Controller. Commands start with #, i.e. \"#help\"\n");
+
+    char input_buffer[INPUT_BUFFER_SIZE] = {0};
+
+    while (1) {
+        printf(PROMPT_STR);
+        if (!fgets(input_buffer, INPUT_BUFFER_SIZE, stdin)) {
+            continue;
+        }
+        
+    }
 }
