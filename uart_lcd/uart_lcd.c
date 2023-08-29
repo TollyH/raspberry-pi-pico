@@ -113,7 +113,7 @@ void lcd_backlight(bool power) {
 void lcd_write(const char *message) {
     lcd_home();
     bool used_second_line = false;
-    for (char *p = message; *p != 0; ++p) {
+    for (const char *p = message; *p != 0; ++p) {
         char c = *p;
         if (!used_second_line
                 && (c == '\n' || message - p == LCD_SCREEN_WIDTH)) {
@@ -137,11 +137,11 @@ void lcd_write(const char *message) {
 * This method returns the cursor to home upon completion.
 */
 void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
-    uint8_t *last_index = pixels + 7;
-    for (uint8_t *p = pixels; p <= last_index; ++p) {
+    const uint8_t *last_index = pixels + 7;
+    for (const uint8_t *p = pixels; p <= last_index; ++p) {
         uint8_t pix = *p;
         // Set address in CGRAM to that of address for this line
-        lcd_transmit_data(0, 0b1000000 & char_number * 8 + (p - pixels));
+        lcd_transmit_data(0, 0b1000000 & (char_number * 8 + (p - pixels)));
         // Move new character data
         lcd_transmit_data(1, pix);
     }
