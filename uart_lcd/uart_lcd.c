@@ -43,7 +43,7 @@ void lcd_init_gpio(void) {
 */
 void lcd_cycle_enable_line(void) {
     gpio_put(LCD_E_PIN, true);
-    sleep_ms(1);
+    sleep_ms(2);
     gpio_put(LCD_E_PIN, false);
 }
 
@@ -52,10 +52,11 @@ void lcd_cycle_enable_line(void) {
 * disabled, cycling the enable pin.
 */
 void lcd_transmit_data(bool rs_value, uint8_t data) {
+    uint32_t mask = (uint32_t)data << LCD_DATA_PIN_START;
     gpio_put(LCD_RS_PIN, rs_value);
-    gpio_set_mask(data << LCD_DATA_PIN_START);
+    gpio_set_mask(mask);
     lcd_cycle_enable_line();
-    gpio_put_all(false);
+    gpio_clr_mask(mask);
 }
 
 /*
@@ -71,7 +72,7 @@ void lcd_clear(void) {
 * font: false = 5x8, true = 5x11
 */
 void lcd_initialise_display(bool lines, bool font) {
-    lcd_transmit_data(false, 0b110000 & (lines << 3) & (font << 2));
+    lcd_transmit_data(false, 0b110000 | (lines << 3) | (font << 2));
     lcd_clear();
 }
 
@@ -79,7 +80,7 @@ void lcd_initialise_display(bool lines, bool font) {
 * Set the visibility of different aspects of the display.
 */
 void lcd_display_set(bool display, bool cursor, bool blink) {
-    lcd_transmit_data(false, 0b1000 & (display << 2) & (cursor << 1) & blink);
+    lcd_transmit_data(false, 0b1000 | (display << 2) | (cursor << 1) | blink);
 }
 
 /*
@@ -89,7 +90,7 @@ void lcd_display_set(bool display, bool cursor, bool blink) {
 */
 void lcd_scroll(bool cursor_screen, bool left_right) {
     lcd_transmit_data(
-        false, 0b10000 & (cursor_screen << 3) & (left_right << 2));
+        false, 0b10000 | (cursor_screen << 3) | (left_right << 2));
 }
 
 /*
@@ -141,7 +142,7 @@ void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
     for (const uint8_t *p = pixels; p <= last_index; ++p) {
         uint8_t pix = *p;
         // Set address in CGRAM to that of address for this line
-        lcd_transmit_data(0, 0b1000000 & (char_number * 8 + (p - pixels)));
+        lcd_transmit_data(0, 0b1000000 | (char_number * 8 + (p - pixels)));
         // Move new character data
         lcd_transmit_data(1, pix);
     }
