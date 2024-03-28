@@ -71,7 +71,7 @@ void lcd_write(const char *message);
 /*
 * Define a custom character. Character number can be between 0 and 7.
 * Pixel array must contain 5 uint8_t values. The lowest bit of each value
-* corresponds to the rightmost pixel of each row of the character. starting at
+* corresponds to the rightmost pixel of each row of the character, starting at
 * the top.
 * This method returns the cursor to home upon completion.
 */

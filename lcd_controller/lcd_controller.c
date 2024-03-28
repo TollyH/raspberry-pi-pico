@@ -1,6 +1,6 @@
 #include "pico/stdlib.h"
 
-#include "uart_lcd.h"
+#include "lcd_controller.h"
 
 void lcd_init_gpio(void) {
     gpio_init(LCD_RS_PIN);
