@@ -1,29 +1,7 @@
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
 #include "pico/stdlib.h"
 
-#define LCD_WIDTH 16
-#define LCD_HEIGHT 2
+#include "uart_lcd.h"
 
-// Pins 0 and 1 are used for stdin/out UART
-#define LCD_RS_PIN 2
-#define LCD_E_PIN 3
-// Data GPIO pins must be sequential
-#define LCD_DATA_PIN_START 4
-#define LCD_A_PIN 12
-
-#define LCD_DATA_PIN_ALL 0b11111111 << LCD_DATA_PIN_START
-
-#define LCD_SCREEN_WIDTH 16
-
-#define INPUT_BUFFER_SIZE 64
-
-#define PROMPT_STR "> "
-
-/*
-* Initialise and set the direction of all required GPIO pins.
-*/
 void lcd_init_gpio(void) {
     gpio_init(LCD_RS_PIN);
     gpio_init(LCD_E_PIN);
@@ -38,19 +16,12 @@ void lcd_init_gpio(void) {
     gpio_set_dir(LCD_A_PIN, GPIO_OUT);
 }
 
-/*
-* Toggle the enable pin on then off.
-*/
 void lcd_cycle_enable_line(void) {
     gpio_put(LCD_E_PIN, true);
     sleep_ms(2);
     gpio_put(LCD_E_PIN, false);
 }
 
-/*
-* Transmit an 8-bit value to the LCD display, with the RS pin either enabled or
-* disabled, cycling the enable pin.
-*/
 void lcd_transmit_data(bool rs_value, uint8_t data) {
     uint32_t mask = (uint32_t)data << LCD_DATA_PIN_START;
     gpio_put(LCD_RS_PIN, rs_value);
@@ -59,58 +30,32 @@ void lcd_transmit_data(bool rs_value, uint8_t data) {
     gpio_clr_mask(mask);
 }
 
-/*
-* Remove all characters from the display and return cursor to home.
-*/
 void lcd_clear(void) {
     lcd_transmit_data(0, 1);
 }
 
-/*
-* Initialise the connected display. Must be used before display can be utilised
-* lines: false = 1 line, true = 2 lines
-* font: false = 5x8, true = 5x11
-*/
 void lcd_initialise_display(bool lines, bool font) {
     lcd_transmit_data(false, 0b110000 | (lines << 3) | (font << 2));
     lcd_clear();
 }
 
-/*
-* Set the visibility of different aspects of the display.
-*/
 void lcd_display_set(bool display, bool cursor, bool blink) {
     lcd_transmit_data(false, 0b1000 | (display << 2) | (cursor << 1) | blink);
 }
 
-/*
-* Move either the cursor or the entire screen.
-* cursor_screen: false = cursor, true = screen
-* left_right: false = left, true = right
-*/
 void lcd_scroll(bool cursor_screen, bool left_right) {
     lcd_transmit_data(
         false, 0b10000 | (cursor_screen << 3) | (left_right << 2));
 }
 
-/*
-* Return the cursor to the start of the screen.
-*/
 void lcd_home(void) {
     lcd_transmit_data(0, 0b10);
 }
 
-/*
-* Turn the display backlight on or off.
-*/
 void lcd_backlight(bool power) {
     gpio_put(LCD_A_PIN, power);
 }
 
-/*
-* Return the cursor home, then write a string to the display.
-* Use \x01 through \x08 inclusive to insert custom characters.
-*/
 void lcd_write(const char *message) {
     lcd_home();
     bool used_second_line = false;
@@ -130,13 +75,6 @@ void lcd_write(const char *message) {
     }
 }
 
-/*
-* Define a custom character. Character number can be between 0 and 7.
-* Pixel array must contain 5 uint8_t values. The lowest bit of each value
-* corresponds to the rightmost pixel of each row of the character. starting at
-* the top.
-* This method returns the cursor to home upon completion.
-*/
 void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
     const uint8_t *last_index = pixels + 7;
     for (const uint8_t *p = pixels; p <= last_index; ++p) {
@@ -147,38 +85,4 @@ void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
         lcd_transmit_data(1, pix);
     }
     lcd_home();
-}
-
-int main() {
-    stdio_init_all();
-
-    lcd_init_gpio();
-
-    printf("LCD <-> UART Controller. Commands start with #, i.e. \"#help\"\n");
-
-    char input_buffer[INPUT_BUFFER_SIZE] = {0};
-
-    while (true) {
-        printf(PROMPT_STR);
-        if (!fgets(input_buffer, INPUT_BUFFER_SIZE, stdin)) {
-
-        char *buffer_ptr = input_buffer;
-        while (true) {
-            char c = getchar();
-            // Echo typed character so user can see what they're typing
-            putchar(c);
-            if (c == '\r' || buffer_ptr == buffer_end) {
-                putchar('\n');
-                break;
-            }
-            *buffer_ptr++ = c;
-        }
-        // Null terminate the input string
-        *buffer_ptr = '\0';
-
-        if (strnlen(input_buffer, INPUT_BUFFER_SIZE) == 0) {
-            printf("You must enter either a command or text to write to the screen.\n");
-        }
-        
-    }
 }
