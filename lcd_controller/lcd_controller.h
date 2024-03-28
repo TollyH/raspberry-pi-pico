@@ -11,6 +11,7 @@
 #define LCD_DATA_PIN_ALL 0b11111111 << LCD_DATA_PIN_START
 
 #define LCD_SCREEN_WIDTH 16
+#define LCD_SECOND_LINE_DDRAM 40
 
 /*
 * Initialise and set the direction of all required GPIO pins.
@@ -63,8 +64,17 @@ void lcd_home(void);
 void lcd_backlight(bool power);
 
 /*
-* Return the cursor home, then write a string to the display.
+* Set the current DDRAM (cursor) address of the display.
+* 0 = first character of first line, 40 = first character of second line
+* 79 = max value
+*/
+void lcd_set_ddram_address(uint8_t address);
+
+/*
+* Write a string to the display starting at the current cursor position.
 * Use \x01 through \x08 inclusive to insert custom characters.
+* Use \n to move to the second line.
+* Automatic line wrapping is handled by this function.
 */
 void lcd_write(const char *message);
 

@@ -2,6 +2,10 @@
 
 #include "lcd_controller.h"
 
+// Keeps track of how many characters we've already written to the screen
+// to keep consistent line wrapping behaviour
+static int current_chars_written = 0;
+
 void lcd_init_gpio(void) {
     gpio_init(LCD_RS_PIN);
     gpio_init(LCD_E_PIN);
@@ -32,11 +36,13 @@ void lcd_transmit_data(bool rs_value, uint8_t data) {
 
 void lcd_clear(void) {
     lcd_transmit_data(0, 1);
+    current_chars_written = 0;
 }
 
 void lcd_initialise_display(bool lines, bool font) {
     lcd_transmit_data(false, 0b110000 | (lines << 3) | (font << 2));
     lcd_clear();
+    current_chars_written = 0;
 }
 
 void lcd_display_set(bool display, bool cursor, bool blink) {
@@ -46,31 +52,36 @@ void lcd_display_set(bool display, bool cursor, bool blink) {
 void lcd_scroll(bool cursor_screen, bool left_right) {
     lcd_transmit_data(
         false, 0b10000 | (cursor_screen << 3) | (left_right << 2));
+    if (!cursor_screen) {
+        current_chars_written += left_right ? -1 : 1;
+    }
 }
 
 void lcd_home(void) {
     lcd_transmit_data(0, 0b10);
+    current_chars_written = 0;
 }
 
 void lcd_backlight(bool power) {
     gpio_put(LCD_A_PIN, power);
 }
 
+void lcd_set_ddram_address(uint8_t address) {
+    lcd_transmit_data(false, 0b10000000 | address);
+    current_chars_written = address % 40;
+}
+
 void lcd_write(const char *message) {
-    lcd_home();
-    bool used_second_line = false;
     for (const char *p = message; *p != 0; ++p) {
         char c = *p;
-        if (!used_second_line
-                && (c == '\n' || message - p == LCD_SCREEN_WIDTH)) {
-            // Move onto second line by filling full 40 characters defined by
-            // specification.
-            for (int i = 0; i < 40 - LCD_SCREEN_WIDTH; i++) {
-                lcd_transmit_data(true, ' ');
-            }
-        }
         if (c != '\n') {
             lcd_transmit_data(true, (uint8_t)c);
+        }
+        if (c == '\n' || ++current_chars_written == LCD_SCREEN_WIDTH) {
+            // Move to first character of second line
+            lcd_set_ddram_address(LCD_SECOND_LINE_DDRAM);
+            current_chars_written = 0;
+            continue;
         }
     }
 }
