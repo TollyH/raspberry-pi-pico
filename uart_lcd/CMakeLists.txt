@@ -1,6 +1,9 @@
 add_executable(uart_lcd
-    uart_lcd.c
+    main.c
+    ../lcd_controller/lcd_controller.c
 )
+
+target_include_directories(uart_lcd PRIVATE ../lcd_controller)
 
 # pull in common dependencies and additional uart hardware support
 target_link_libraries(uart_lcd pico_stdlib hardware_uart)
