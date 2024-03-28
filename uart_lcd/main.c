@@ -21,7 +21,8 @@ static void command_help(int argc, char *argv[]) {
         "\nList of commands:\n"
         "    #init 1/2 8/11 - Initialise the screen in (1)/(2) line mode with 5x(8) or 5x(11) font\n"
         "    #set 0/1 0/1 0/1 - Set whether the display, cursor, and blinking are on (1) or off (0)\n"
-        "    #clear - Clear the screen of all characters\n"
+        "    #clear - Clear the screen of all characters and return the cursor to the start position\n"
+        "    #home - Return the cursor to the start position\n"
         "    #scroll c/s l/r - Scroll the (c)ursor/(s)creen (l)eft/(r)ight\n"
         "    #backlight 0/1 - Set the screen backlight on (1) or off (0)\n"
         "    #custom [0-7] <char> - Define a custom character at index 0-7\n"
@@ -103,6 +104,15 @@ static void command_clear(int argc, char *argv[]) {
     }
 
     lcd_clear();
+}
+
+static void command_home(int argc, char *argv[]) {
+    if (argc != 0) {
+        printf("The #home command takes no arguments.\n");
+        return;
+    }
+
+    lcd_home();
 }
 
 static void command_scroll(int argc, char *argv[]) {
@@ -263,6 +273,8 @@ int main() {
                 command_set(argc, argv);
             } else if (strcmp(command, "#clear") == 0) {
                 command_clear(argc, argv);
+            } else if (strcmp(command, "#home") == 0) {
+                command_home(argc, argv);
             } else if (strcmp(command, "#scroll") == 0) {
                 command_scroll(argc, argv);
             } else if (strcmp(command, "#backlight") == 0) {
