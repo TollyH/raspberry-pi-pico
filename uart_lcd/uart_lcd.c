@@ -161,7 +161,23 @@ int main() {
     while (true) {
         printf(PROMPT_STR);
         if (!fgets(input_buffer, INPUT_BUFFER_SIZE, stdin)) {
-            continue;
+
+        char *buffer_ptr = input_buffer;
+        while (true) {
+            char c = getchar();
+            // Echo typed character so user can see what they're typing
+            putchar(c);
+            if (c == '\r' || buffer_ptr == buffer_end) {
+                putchar('\n');
+                break;
+            }
+            *buffer_ptr++ = c;
+        }
+        // Null terminate the input string
+        *buffer_ptr = '\0';
+
+        if (strnlen(input_buffer, INPUT_BUFFER_SIZE) == 0) {
+            printf("You must enter either a command or text to write to the screen.\n");
         }
         
     }
