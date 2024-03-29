@@ -6,6 +6,17 @@
 // to keep consistent line wrapping behaviour
 static int current_chars_written = 0;
 
+void _lcd_cycle_enable_line(void) {
+    gpio_put(LCD_E_PIN, true);
+    sleep_ms(2);
+    gpio_put(LCD_E_PIN, false);
+}
+
+void _lcd_set_ddram_address(uint8_t address) {
+    lcd_transmit_data(false, 0b10000000 | address);
+    current_chars_written = address % LCD_SECOND_LINE_DDRAM;
+}
+
 void lcd_init_gpio(void) {
     gpio_init(LCD_RS_PIN);
     gpio_init(LCD_E_PIN);
@@ -20,17 +31,11 @@ void lcd_init_gpio(void) {
     gpio_set_dir(LCD_A_PIN, GPIO_OUT);
 }
 
-void lcd_cycle_enable_line(void) {
-    gpio_put(LCD_E_PIN, true);
-    sleep_ms(2);
-    gpio_put(LCD_E_PIN, false);
-}
-
 void lcd_transmit_data(bool rs_value, uint8_t data) {
     uint32_t mask = (uint32_t)data << LCD_DATA_PIN_START;
     gpio_put(LCD_RS_PIN, rs_value);
     gpio_set_mask(mask);
-    lcd_cycle_enable_line();
+    _lcd_cycle_enable_line();
     gpio_clr_mask(mask);
 }
 
@@ -66,20 +71,27 @@ void lcd_backlight(bool power) {
     gpio_put(LCD_A_PIN, power);
 }
 
-void lcd_set_ddram_address(uint8_t address) {
-    lcd_transmit_data(false, 0b10000000 | address);
-    current_chars_written = address % 40;
+void lcd_set_cursor_position(bool line, uint8_t offset) {
+    if (line) {
+        offset += LCD_SECOND_LINE_DDRAM;
+    }
+    _lcd_set_ddram_address(offset);
 }
 
 void lcd_write(const char *message) {
     for (const char *p = message; *p != 0; ++p) {
         char c = *p;
+        if (c >= '\x01' && c <= '\x08') {
+            // Character should be a custom character.
+            // Convert 1-based index to 0-based.
+            --c;
+        }
         if (c != '\n') {
             lcd_transmit_data(true, (uint8_t)c);
         }
         if (c == '\n' || ++current_chars_written == LCD_SCREEN_WIDTH) {
             // Move to first character of second line
-            lcd_set_ddram_address(LCD_SECOND_LINE_DDRAM);
+            lcd_set_cursor_position(true, 0);
             current_chars_written = 0;
             continue;
         }
@@ -87,13 +99,12 @@ void lcd_write(const char *message) {
 }
 
 void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
-    const uint8_t *last_index = pixels + 7;
-    for (const uint8_t *p = pixels; p <= last_index; ++p) {
-        uint8_t pix = *p;
-        // Set address in CGRAM to that of address for this line
-        lcd_transmit_data(0, 0b1000000 | (char_number * 8 + (p - pixels)));
-        // Move new character data
-        lcd_transmit_data(1, pix);
+    // Set address in CGRAM to that of address for this character
+    lcd_transmit_data(0, 0b1000000 | char_number * 8);
+    for (int i = 0; i < 8; ++i) {
+        // Set character line data
+        // (display will automatically move to next line in character)
+        lcd_transmit_data(1, pixels[i] & 0b11111);
     }
     lcd_home();
 }

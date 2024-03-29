@@ -11,17 +11,22 @@
 #define LCD_DATA_PIN_ALL 0b11111111 << LCD_DATA_PIN_START
 
 #define LCD_SCREEN_WIDTH 16
-#define LCD_SECOND_LINE_DDRAM 40
+#define LCD_SECOND_LINE_DDRAM 0x40
+
+/*
+* Toggle the enable pin on then off.
+*/
+void _lcd_cycle_enable_line(void);
+
+/*
+* Set the current DDRAM (cursor) address of the display.
+*/
+void _lcd_set_ddram_address(uint8_t address);
 
 /*
 * Initialise and set the direction of all required GPIO pins.
 */
 void lcd_init_gpio(void);
-
-/*
-* Toggle the enable pin on then off.
-*/
-void lcd_cycle_enable_line(void);
 
 /*
 * Transmit an 8-bit value to the LCD display, with the RS pin either enabled or
@@ -64,11 +69,11 @@ void lcd_home(void);
 void lcd_backlight(bool power);
 
 /*
-* Set the current DDRAM (cursor) address of the display.
-* 0 = first character of first line, 40 = first character of second line
-* 79 = max value
+* Set the position of the cursor relative to either line 1 or 2.
+* line: false = 1, true = 2
+* offset: 0-based position index between 0 and 39
 */
-void lcd_set_ddram_address(uint8_t address);
+void lcd_set_cursor_position(bool line, uint8_t offset);
 
 /*
 * Write a string to the display starting at the current cursor position.
@@ -80,9 +85,9 @@ void lcd_write(const char *message);
 
 /*
 * Define a custom character. Character number can be between 0 and 7.
-* Pixel array must contain 5 uint8_t values. The lowest bit of each value
-* corresponds to the rightmost pixel of each row of the character, starting at
-* the top.
+* Pixel array must contain 8 uint8_t values no greater than 0b11111 each.
+* The lowest bit of each value corresponds to the rightmost pixel
+* of each row of the character, starting at the top.
 * This method returns the cursor to home upon completion.
 */
 void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels);
