@@ -330,7 +330,7 @@ int main() {
         while (true) {
             char c = getchar();
 
-            if (c == '\x7f') {
+            if (c == '\x7f' || c == '\b') {
                 // '\x7f' is ASCII delete - user pressed backspace key.
                 // Decrement buffer so it is overwritten by next keypress.
                 if (buffer_ptr > input_buffer) {
@@ -343,8 +343,8 @@ int main() {
             // Echo typed character so user can see what they're typing
             putchar(c);
 
-            if (c == '\r' || buffer_ptr == buffer_end) {
-                // '\r' represents user pressing Enter key
+            if (c == '\r' || c == '\n' || buffer_ptr == buffer_end) {
+                // '\r' or '\n' represents user pressing Enter key
                 // - stop taking input and process what we have
                 putchar('\n');
                 break;

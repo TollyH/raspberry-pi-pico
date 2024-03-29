@@ -99,7 +99,7 @@ void lcd_write(const char *message) {
 
 void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
     // Set address in CGRAM to that of address for this character
-    lcd_transmit_data(0, 0b1000000 | char_number * 8);
+    lcd_transmit_data(0, 0b1000000 | (char_number * 8));
     for (int i = 0; i < 8; ++i) {
         // Set character line data
         // (display will automatically move to next line in character)
