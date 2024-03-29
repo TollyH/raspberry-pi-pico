@@ -6,7 +6,7 @@ Projects I've made for the [Raspberry Pi Pico](https://www.raspberrypi.com/produ
 
 ### Libraries
 
-- `lcd_controller` - A library for interacting with character LCD displays compatible with the Hitachi HD44780 Controller.
+- `lcd_controller` - A library for interacting with character LCD displays compatible with the [Hitachi HD44780 Controller](https://www.sparkfun.com/datasheets/LCD/HD44780.pdf).
 
 ### Standalone applications
 
