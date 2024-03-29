@@ -93,7 +93,6 @@ void lcd_write(const char *message) {
             // Move to first character of second line
             lcd_set_cursor_position(true, 0);
             current_chars_written = 0;
-            continue;
         }
     }
 }
