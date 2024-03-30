@@ -27,10 +27,14 @@ static void command_help(int argc, char *argv[]) {
         "    #def_custom [0-7] <char> - Define a custom character at index 0-7\n"
         "        <char> is 8, 5-bit binary numbers separated by spaces\n"
         "    #write_custom [0-7] - Write the custom character at index 0-7\n"
+        "    #read_custom [0-7] - Get the pixel data of the custom character at index 0-7\n"
         "    #newline - Move the cursor onto the second line\n"
-        "    #setpos 1/2 [0-39] - Set the position of the cursor to either line (1) or (2), at a 0-based offset.\n"
+        "    #setpos 1/2 [0-39] - Set the position of the cursor to either line (1) or (2), at a 0-based offset\n"
+        "    #getpos - Get the position of the cursor\n"
+        "    #read - Read the text currently on the screen\n"
         "    #raw_tx 0/1 <data> - (ADVANCED) Transmit raw data to the LCD module, with RS pin on (1) or off (0)\n"
-        "        <data> is an 8-bit binary number, going from D7-D0\n");
+        "        <data> is an 8-bit binary number, going from D7-D0\n"
+        "    #raw_rx 0/1 - (ADVANCED) Receive raw data from the LCD module, with RS pin on (1) or off (0)\n");
 }
 
 static void command_init(int argc, char *argv[]) {
@@ -233,6 +237,31 @@ static void command_write_custom(int argc, char *argv[]) {
     lcd_write(str_to_write);
 }
 
+static void command_read_custom(int argc, char *argv[]) {
+    if (argc != 1) {
+        printf("The #read_custom command requires one argument.\n");
+        return;
+    }
+
+    if (strlen(argv[0]) != 1) {
+        printf("The first argument to the #read_custom command must be a single digit.\n");
+        return;
+    }
+    // Convert ASCII digit to integer
+    char character_index = argv[0][0] - '0';
+    if (character_index < 0 || character_index > 7) {
+        printf("The first argument to the #read_custom command must be between 0 and 7.\n");
+        return;
+    }
+
+    uint8_t pixels[8];
+    lcd_get_custom_char(character_index, pixels);
+    for (int i = 0; i < 8; i++) {
+        printf("%05b ", pixels[i]);
+    }
+    putchar('\n');
+}
+
 static void command_newline(int argc, char *argv[]) {
     if (argc != 0) {
         printf("The #newline command takes no arguments.\n");
@@ -274,7 +303,37 @@ static void command_setpos(int argc, char *argv[]) {
         return;
     }
 
-    lcd_set_cursor_position(line, offset);
+    lcd_set_cursor_position(
+        (struct LCDPosition){.line = line, .offset = offset});
+}
+
+static void command_getpos(int argc, char *argv[]) {
+    if (argc != 0) {
+        printf("The #getpos command takes no arguments.\n");
+        return;
+    }
+
+    struct LCDPosition position = lcd_get_cursor_position();
+    printf("line: %d, offset: %d\n", position.line + 1, position.offset);
+}
+
+static void command_read(int argc, char *argv[]) {
+    if (argc != 0) {
+        printf("The #read command takes no arguments.\n");
+        return;
+    }
+
+    char string[LCD_STRING_TOTAL_CHARS];
+    lcd_read(string);
+    for (int i = 0; i < strlen(string); i++) {
+        char c = string[i];
+        if (c >= 1 && c <= 8) {
+            // Convert custom character to printable placeholder
+            c = '#';
+        }
+        putchar(c);
+    }
+    putchar('\n');
 }
 
 static void command_raw_tx(int argc, char *argv[]) {
@@ -311,6 +370,26 @@ static void command_raw_tx(int argc, char *argv[]) {
     }
 
     lcd_transmit_data(rs_pin, data);
+}
+
+static void command_raw_rx(int argc, char *argv[]) {
+    if (argc != 1) {
+        printf("The #raw_rx command requires one argument.\n");
+        return;
+    }
+
+    bool rs_pin;
+    if (strcmp("0", argv[0]) == 0) {
+        rs_pin = false;
+    } else if (strcmp("1", argv[0]) == 0) {
+        rs_pin = true;
+    } else {
+        printf("The first argument to the #raw_rx command must be 0 or 1.\n");
+        return;
+    }
+
+    uint8_t data = lcd_receive_data(rs_pin, true);
+    printf("%08b (0x%02x) (%d)\n", data, data, data);
 }
 
 int main() {
@@ -389,12 +468,20 @@ int main() {
                 command_def_custom(argc, argv);
             } else if (strcmp(command, "#write_custom") == 0) {
                 command_write_custom(argc, argv);
+            } else if (strcmp(command, "#read_custom") == 0) {
+                command_read_custom(argc, argv);
             } else if (strcmp(command, "#newline") == 0) {
                 command_newline(argc, argv);
             } else if (strcmp(command, "#setpos") == 0) {
                 command_setpos(argc, argv);
+            } else if (strcmp(command, "#getpos") == 0) {
+                command_getpos(argc, argv);
+            } else if (strcmp(command, "#read") == 0) {
+                command_read(argc, argv);
             } else if (strcmp(command, "#raw_tx") == 0) {
                 command_raw_tx(argc, argv);
+            } else if (strcmp(command, "#raw_rx") == 0) {
+                command_raw_rx(argc, argv);
             } else {
                 printf("\"%s\" is not a recognised command. Run #help to see all available commands.\n", command);
             }
