@@ -28,7 +28,7 @@ static void command_help(int argc, char *argv[]) {
         "        <char> is 8, 5-bit binary numbers separated by spaces\n"
         "    #write_custom [0-7] - Write the custom character at index 0-7\n"
         "    #read_custom [0-7] - Get the pixel data of the custom character at index 0-7\n"
-        "    #newline - Move the cursor onto the second line\n"
+        "    #newline - Move the cursor to the start of the opposite line\n"
         "    #setpos 1/2 [0-39] - Set the position of the cursor to either line (1) or (2), at a 0-based offset\n"
         "    #getpos - Get the position of the cursor\n"
         "    #read - Read the text currently on the screen\n"

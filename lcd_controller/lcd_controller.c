@@ -2,13 +2,9 @@
 
 #include "lcd_controller.h"
 
-// Keeps track of how many characters we've already written to the screen
-// to keep consistent line wrapping behaviour
-static int current_chars_written = 0;
-
 void _lcd_cycle_enable_line(void) {
     gpio_put(LCD_E_PIN, true);
-    sleep_us(2);
+    sleep_us(1);
     gpio_put(LCD_E_PIN, false);
 }
 
@@ -29,7 +25,6 @@ uint8_t _lcd_get_address(void) {
 
 void _lcd_set_ddram_address(uint8_t address) {
     lcd_transmit_data(false, 0b10000000 | address);
-    current_chars_written = address % LCD_SECOND_LINE_DDRAM;
 }
 
 void _lcd_set_cgram_address(uint8_t address) {
@@ -61,7 +56,7 @@ uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy) {
     gpio_put(LCD_RS_PIN, rs_value);
 
     gpio_put(LCD_E_PIN, true);
-    sleep_us(2);
+    sleep_us(1);
     uint8_t data = (gpio_get_all() & LCD_DATA_PIN_ALL) >> LCD_DATA_PIN_START;
     gpio_put(LCD_E_PIN, false);
 
@@ -138,17 +133,17 @@ void lcd_transmit_data(bool rs_value, uint8_t data) {
     gpio_set_mask(mask);
     _lcd_cycle_enable_line();
     gpio_clr_mask(mask);
+
+    sleep_us(LCD_SHORT_SLEEP_US);
 }
 
 void lcd_clear(void) {
     lcd_transmit_data(false, 1);
-    current_chars_written = 0;
 }
 
 void lcd_initialise_display(bool lines, bool font) {
     lcd_transmit_data(false, 0b110000 | (lines << 3) | (font << 2));
     lcd_clear();
-    current_chars_written = 0;
 }
 
 void lcd_display_set(bool display, bool cursor, bool blink) {
@@ -158,14 +153,12 @@ void lcd_display_set(bool display, bool cursor, bool blink) {
 void lcd_scroll(bool cursor_screen, bool left_right) {
     lcd_transmit_data(
         false, 0b10000 | (cursor_screen << 3) | (left_right << 2));
-    if (!cursor_screen) {
-        current_chars_written += left_right ? -1 : 1;
-    }
 }
 
 void lcd_home(void) {
     lcd_transmit_data(false, 0b10);
-    current_chars_written = 0;
+
+    sleep_ms(LCD_LONG_SLEEP_MS);
 }
 
 void lcd_backlight(bool power) {
@@ -190,11 +183,11 @@ void lcd_write(const char *message) {
         if (c != '\n') {
             lcd_transmit_data(true, (uint8_t)c);
         }
-        if (c == '\n' || ++current_chars_written == LCD_SCREEN_WIDTH) {
-            // Move to first character of second line
+        struct LCDPosition position = lcd_get_cursor_position();
+        if (c == '\n' || position.offset >= LCD_SCREEN_WIDTH) {
+            // Move to first character of next line
             lcd_set_cursor_position(
-                (struct LCDPosition){.line = true, .offset = 0});
-            current_chars_written = 0;
+                (struct LCDPosition){.line = !position.line, .offset = 0});
         }
     }
 }

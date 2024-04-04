@@ -15,6 +15,9 @@
 #define LCD_SECOND_LINE_DDRAM 0x40
 #define LCD_STRING_TOTAL_CHARS (LCD_SCREEN_WIDTH * 2) + 2
 
+#define LCD_SHORT_SLEEP_US 37
+#define LCD_LONG_SLEEP_MS 2
+
 struct LCDPosition {
     bool line;
     uint8_t offset;
