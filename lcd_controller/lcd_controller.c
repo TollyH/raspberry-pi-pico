@@ -38,11 +38,13 @@ void lcd_init_gpio(void) {
     // Initialise all 8 data pins at once
     gpio_init_mask(LCD_DATA_PIN_ALL);
     gpio_init(LCD_A_PIN);
+    gpio_init(LCD_LED_PIN);
 
     gpio_set_dir(LCD_RS_PIN, GPIO_OUT);
     gpio_set_dir(LCD_RW_PIN, GPIO_OUT);
     gpio_set_dir(LCD_E_PIN, GPIO_OUT);
     gpio_set_dir(LCD_A_PIN, GPIO_OUT);
+    gpio_set_dir(LCD_LED_PIN, GPIO_OUT);
 }
 
 bool lcd_is_busy(void) {
@@ -52,6 +54,8 @@ bool lcd_is_busy(void) {
 uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy) {
     while (wait_for_not_busy && lcd_is_busy()) { }
 
+    gpio_put(LCD_LED_PIN, true);
+
     _lcd_set_data_direction(GPIO_IN);
     gpio_put(LCD_RS_PIN, rs_value);
 
@@ -59,6 +63,8 @@ uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy) {
     sleep_us(1);
     uint8_t data = (gpio_get_all() & LCD_DATA_PIN_ALL) >> LCD_DATA_PIN_START;
     gpio_put(LCD_E_PIN, false);
+
+    gpio_put(LCD_LED_PIN, false);
 
     return data;
 }
@@ -127,6 +133,8 @@ void lcd_get_custom_char(uint8_t char_number, uint8_t *pixels) {
 void lcd_transmit_data(bool rs_value, uint8_t data) {
     while (lcd_is_busy()) { }
 
+    gpio_put(LCD_LED_PIN, true);
+
     _lcd_set_data_direction(GPIO_OUT);
     uint32_t mask = (uint32_t)data << LCD_DATA_PIN_START;
     gpio_put(LCD_RS_PIN, rs_value);
@@ -135,6 +143,7 @@ void lcd_transmit_data(bool rs_value, uint8_t data) {
     gpio_clr_mask(mask);
 
     sleep_us(LCD_SHORT_SLEEP_US);
+    gpio_put(LCD_LED_PIN, false);
 }
 
 void lcd_clear(void) {
@@ -158,7 +167,9 @@ void lcd_scroll(bool cursor_screen, bool left_right) {
 void lcd_home(void) {
     lcd_transmit_data(false, 0b10);
 
+    gpio_put(LCD_LED_PIN, true);
     sleep_ms(LCD_LONG_SLEEP_MS);
+    gpio_put(LCD_LED_PIN, false);
 }
 
 void lcd_backlight(bool power) {

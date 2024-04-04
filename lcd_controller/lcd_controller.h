@@ -8,6 +8,7 @@
 // Data GPIO pins must be sequential
 #define LCD_DATA_PIN_START 4
 #define LCD_A_PIN 12
+#define LCD_LED_PIN 25
 
 #define LCD_DATA_PIN_ALL 0b11111111 << LCD_DATA_PIN_START
 
