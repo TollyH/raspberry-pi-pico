@@ -64,6 +64,7 @@ uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy) {
     uint8_t data = (gpio_get_all() & LCD_DATA_PIN_ALL) >> LCD_DATA_PIN_START;
     gpio_put(LCD_E_PIN, false);
 
+    sleep_us(LCD_SHORT_SLEEP_US);
     gpio_put(LCD_LED_PIN, false);
 
     return data;
