@@ -9,7 +9,7 @@
 
 #define PROMPT_STR "\n> "
 
-static void command_help(int argc, char *argv[]) {
+static void command_help(int argc, char *argv[], struct LCDSize *size) {
     if (argc != 0) {
         printf("The #help command takes no arguments.\n");
         return;
@@ -18,6 +18,7 @@ static void command_help(int argc, char *argv[]) {
     printf("LCD <-> UART Controller. Commands start with #, i.e. \"#help\"\n"
         "Write any text not prefixed with # to write it to the display\n"
         "\nList of commands:\n"
+        "    #set_size [1-%d] [1-%d] - Set the number of lines and columns the display has\n"
         "    #init 1/2 8/11 - Initialise the screen in (1)/(2) line mode with 5x(8) or 5x(11) font\n"
         "    #set 0/1 0/1 0/1 - Set whether the display, cursor, and blinking are on (1) or off (0)\n"
         "    #clear - Clear the screen of all characters and return the cursor to the start position\n"
@@ -28,13 +29,54 @@ static void command_help(int argc, char *argv[]) {
         "        <char> is 8, 5-bit binary numbers separated by spaces\n"
         "    #write_custom [0-7] - Write the custom character at index 0-7\n"
         "    #read_custom [0-7] - Get the pixel data of the custom character at index 0-7\n"
-        "    #newline - Move the cursor to the start of the opposite line\n"
-        "    #setpos 1/2 [0-39] - Set the position of the cursor to either line (1) or (2), at a 0-based offset\n"
+        "    #newline - Move the cursor to the start of the next line\n"
+        "    #setpos [1-%d] [0-%d] - Set the position of the cursor to a given line, at a 0-based offset\n"
         "    #getpos - Get the position of the cursor\n"
         "    #read - Read the text currently on the screen\n"
         "    #raw_tx 0/1 <data> - (ADVANCED) Transmit raw data to the LCD module, with RS pin on (1) or off (0)\n"
         "        <data> is an 8-bit binary number, going from D7-D0\n"
-        "    #raw_rx 0/1 - (ADVANCED) Receive raw data from the LCD module, with RS pin on (1) or off (0)\n");
+        "    #raw_rx 0/1 - (ADVANCED) Receive raw data from the LCD module, with RS pin on (1) or off (0)\n",
+        LCD_SCREEN_MAX_HEIGHT, LCD_SCREEN_MAX_WIDTH, size->height, size->width - 1
+    );
+}
+
+static void command_set_size(int argc, char *argv[], struct LCDSize *size) {
+    if (argc != 2) {
+        printf("The #set_size command requires two arguments.\n");
+        return;
+    }
+
+    uint8_t height;
+    if (strlen(argv[0]) == 1) {
+        // Convert ASCII digit to integer
+        height = argv[0][0] - '0';
+    } else {
+        printf("The first argument to the #set_size command must be 1 digit long.\n");
+        return;
+    }
+    if (height < 1 || height > 4) {
+        printf("The first argument to the #set_size command must be between 1 and 4.\n");
+        return;
+    }
+
+    uint8_t width;
+    if (strlen(argv[1]) == 1) {
+        // Convert ASCII digit to integer
+        width = argv[1][0] - '0';
+    } else if (strlen(argv[1]) == 2) {
+        // Convert ASCII digits to integer
+        width = ((argv[1][0] - '0') * 10) + argv[1][1] - '0';
+    } else {
+        printf("The second argument to the #set_size command must be 1 or 2 digits long.\n");
+        return;
+    }
+    if (width < 1 || width > 20) {
+        printf("The second argument to the #set_size command must be between 1 and 20.\n");
+        return;
+    }
+
+    size->height = height;
+    size->width = width;
 }
 
 static void command_init(int argc, char *argv[]) {
@@ -215,7 +257,7 @@ static void command_def_custom(int argc, char *argv[]) {
     lcd_define_custom_char((uint8_t)character_index, pixels);
 }
 
-static void command_write_custom(int argc, char *argv[]) {
+static void command_write_custom(int argc, char *argv[], struct LCDSize *size) {
     if (argc != 1) {
         printf("The #write_custom command requires one argument.\n");
         return;
@@ -234,7 +276,7 @@ static void command_write_custom(int argc, char *argv[]) {
 
     char str_to_write[2] = {0};
     str_to_write[0] = character_index + 1;  // lcd_write uses 1-based indexing
-    lcd_write(str_to_write);
+    lcd_write(*size, str_to_write);
 }
 
 static void command_read_custom(int argc, char *argv[]) {
@@ -262,30 +304,35 @@ static void command_read_custom(int argc, char *argv[]) {
     putchar('\n');
 }
 
-static void command_newline(int argc, char *argv[]) {
+static void command_newline(int argc, char *argv[], struct LCDSize *size) {
     if (argc != 0) {
         printf("The #newline command takes no arguments.\n");
         return;
     }
 
-    lcd_write("\n");
+    lcd_write(*size, "\n");
 }
 
-static void command_setpos(int argc, char *argv[]) {
+static void command_setpos(int argc, char *argv[], struct LCDSize *size) {
     if (argc != 2) {
         printf("The #setpos command requires two arguments.\n");
         return;
     }
 
-    bool line;
-    if (strcmp("1", argv[0]) == 0) {
-        line = false;
-    } else if (strcmp("2", argv[0]) == 0) {
-        line = true;
+    uint8_t line;
+    if (strlen(argv[0]) == 1) {
+        // Convert ASCII digit to integer
+        line = argv[0][0] - '0';
     } else {
-        printf("The first argument to the #setpos command must be 1 or 2.\n");
+        printf("The first argument to the #setpos command must be 1 digit long.\n");
         return;
     }
+    if (line < 1 || line > size->height) {
+        printf("The first argument to the #setpos command must be between 1 and %d.\n", size->height);
+        return;
+    }
+    // Convert to 0-indexed
+    line--;
 
     uint8_t offset;
     if (strlen(argv[1]) == 1) {
@@ -298,8 +345,8 @@ static void command_setpos(int argc, char *argv[]) {
         printf("The second argument to the #setpos command must be 1 or 2 digits long.\n");
         return;
     }
-    if (offset < 0 || offset > 39) {
-        printf("The second argument to the #setpos command must be between 0 and 39.\n");
+    if (offset < 0 || offset > size->width - 1) {
+        printf("The second argument to the #setpos command must be between 0 and %d.\n", size->width - 1);
         return;
     }
 
@@ -317,14 +364,14 @@ static void command_getpos(int argc, char *argv[]) {
     printf("line: %d, offset: %d\n", position.line + 1, position.offset);
 }
 
-static void command_read(int argc, char *argv[]) {
+static void command_read(int argc, char *argv[], struct LCDSize *size) {
     if (argc != 0) {
         printf("The #read command takes no arguments.\n");
         return;
     }
 
-    char string[LCD_STRING_TOTAL_CHARS];
-    lcd_read(string);
+    char string[LCD_STRING_MAX_CHARS];
+    lcd_read(*size, string);
     for (int i = 0; i < strlen(string); i++) {
         char c = string[i];
         if (c >= 1 && c <= 8) {
@@ -402,6 +449,8 @@ int main() {
     char input_buffer[INPUT_BUFFER_SIZE] = {0};
     char *buffer_end = input_buffer + INPUT_BUFFER_SIZE - 1;
 
+    struct LCDSize lcd_size = (struct LCDSize){.width = 16, .height = 2};
+
     while (true) {
         printf(PROMPT_STR);
 
@@ -451,7 +500,9 @@ int main() {
             }
 
             if (strcmp(command, "#help") == 0) {
-                command_help(argc, argv);
+                command_help(argc, argv, &lcd_size);
+            } else if (strcmp(command, "#set_size") == 0) {
+                command_set_size(argc, argv, &lcd_size);
             } else if (strcmp(command, "#init") == 0) {
                 command_init(argc, argv);
             } else if (strcmp(command, "#set") == 0) {
@@ -467,17 +518,17 @@ int main() {
             } else if (strcmp(command, "#def_custom") == 0) {
                 command_def_custom(argc, argv);
             } else if (strcmp(command, "#write_custom") == 0) {
-                command_write_custom(argc, argv);
+                command_write_custom(argc, argv, &lcd_size);
             } else if (strcmp(command, "#read_custom") == 0) {
                 command_read_custom(argc, argv);
             } else if (strcmp(command, "#newline") == 0) {
-                command_newline(argc, argv);
+                command_newline(argc, argv, &lcd_size);
             } else if (strcmp(command, "#setpos") == 0) {
-                command_setpos(argc, argv);
+                command_setpos(argc, argv, &lcd_size);
             } else if (strcmp(command, "#getpos") == 0) {
                 command_getpos(argc, argv);
             } else if (strcmp(command, "#read") == 0) {
-                command_read(argc, argv);
+                command_read(argc, argv, &lcd_size);
             } else if (strcmp(command, "#raw_tx") == 0) {
                 command_raw_tx(argc, argv);
             } else if (strcmp(command, "#raw_rx") == 0) {
@@ -487,7 +538,7 @@ int main() {
             }
         } else {
             // Text
-            lcd_write(input_buffer);
+            lcd_write(lcd_size, input_buffer);
         }
     }
 }

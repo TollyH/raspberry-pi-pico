@@ -12,16 +12,24 @@
 
 #define LCD_DATA_PIN_ALL 0b11111111 << LCD_DATA_PIN_START
 
-#define LCD_SCREEN_WIDTH 16
+#define LCD_SCREEN_MAX_WIDTH 20
+#define LCD_SCREEN_MAX_HEIGHT 4
+#define LCD_STRING_MAX_CHARS LCD_SCREEN_MAX_HEIGHT * (LCD_SCREEN_MAX_WIDTH + 1)
+
 #define LCD_SECOND_LINE_DDRAM 0x40
-#define LCD_STRING_TOTAL_CHARS (LCD_SCREEN_WIDTH * 2) + 2
+#define LCD_BOTTOM_HALF_OFFSET 20
 
 #define LCD_SHORT_SLEEP_US 37
 #define LCD_LONG_SLEEP_MS 2
 
 struct LCDPosition {
-    bool line;
+    uint8_t line;
     uint8_t offset;
+};
+
+struct LCDSize {
+    uint8_t width;
+    uint8_t height;
 };
 
 // INTERNAL METHODS
@@ -80,19 +88,19 @@ bool lcd_is_busy(void);
 uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy);
 
 /*
-* Get the position of the cursor relative to either line 1 or 2.
-* line: false = 1, true = 2
-* offset: 0-based position index between 0 and 39
+* Get the position of the cursor.
+* line: 0-based line number between 0 and LCD_SCREEN_MAX_HEIGHT - 1
+* offset: 0-based position index between 0 and LCD_SCREEN_MAX_WIDTH - 1
 */
 struct LCDPosition lcd_get_cursor_position(void);
 
 /*
 * Read the text currently on the screen as a C string.
-* String must have enough capacity for LCD_STRING_TOTAL_CHARS.
+* String must have enough capacity for (size.width + 1) * size.height.
 * Custom characters are represented by \x01 through \x08 inclusive.
 * Lines are separated by \n.
 */
-void lcd_read(char *string);
+void lcd_read(struct LCDSize size, char *string);
 
 /*
 * Retrieve pixels for a defined custom character. Character number can be between 0 and 7.
@@ -145,19 +153,19 @@ void lcd_home(void);
 void lcd_backlight(bool power);
 
 /*
-* Set the position of the cursor relative to either line 1 or 2.
-* line: false = 1, true = 2
-* offset: 0-based position index between 0 and 39
+* Set the position of the cursor.
+* line: 0-based line number between 0 and LCD_SCREEN_MAX_HEIGHT - 1
+* offset: 0-based position index between 0 and LCD_SCREEN_MAX_WIDTH - 1
 */
 void lcd_set_cursor_position(struct LCDPosition position);
 
 /*
 * Write a string to the display starting at the current cursor position.
 * Use \x01 through \x08 inclusive to insert custom characters.
-* Use \n to move to the second line.
+* Use \n to move to the next line.
 * Automatic line wrapping is handled by this function.
 */
-void lcd_write(const char *message);
+void lcd_write(struct LCDSize size, const char *message);
 
 /*
 * Define a custom character. Character number can be between 0 and 7.

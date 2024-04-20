@@ -72,44 +72,43 @@ uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy) {
 
 struct LCDPosition lcd_get_cursor_position(void) {
     uint8_t address = _lcd_get_address();
+
+    uint8_t mod_second_line = address % LCD_SECOND_LINE_DDRAM;
+    uint8_t line;
+    if (mod_second_line >= LCD_BOTTOM_HALF_OFFSET) {
+        line = address >= LCD_SECOND_LINE_DDRAM ? 3 : 2;
+    } else {
+        line = address >= LCD_SECOND_LINE_DDRAM ? 1 : 0;
+    }
+
     return (struct LCDPosition){
-        .line = address >= LCD_SECOND_LINE_DDRAM,
-        .offset = address % LCD_SECOND_LINE_DDRAM
+        .line = line,
+        .offset = mod_second_line % LCD_BOTTOM_HALF_OFFSET
     };
 }
 
-void lcd_read(char *string) {
+void lcd_read(struct LCDSize size, char *string) {
     // Store old cursor position to return to later
     struct LCDPosition old_position = lcd_get_cursor_position();
 
-    // Get first line
-    lcd_set_cursor_position((struct LCDPosition){.line = false, .offset = 0});
-    for (int i = 0; i < LCD_SCREEN_WIDTH; i++) {
-        // Get character data
-        // (display will automatically move to next character)
-        uint8_t data = lcd_receive_data(true, true);
-        if (data <= 7) {
-            // Convert 0-indexed custom character to 1-indexed
-            ++data;
-        }
-        string[i] = data;
-    }
-    string[LCD_SCREEN_WIDTH] = '\n';
+    int characters_per_line = size.width + 1;
 
-    // Get second line
-    lcd_set_cursor_position((struct LCDPosition){.line = true, .offset = 0});
-    for (int i = LCD_SCREEN_WIDTH + 1; i < LCD_STRING_TOTAL_CHARS - 1; i++) {
-        // Get character data
-        // (display will automatically move to next character)
-        uint8_t data = lcd_receive_data(true, true);
-        if (data <= 7) {
-            // Convert 0-indexed custom character to 1-indexed
-            ++data;
+    for (int y = 0; y < size.height; y++) {
+        lcd_set_cursor_position((struct LCDPosition){.line = y, .offset = 0});
+        for (int x = 0; x < size.width; x++) {
+            // Get character data
+            // (display will automatically move to next character)
+            uint8_t data = lcd_receive_data(true, true);
+            if (data <= 7) {
+                // Convert 0-indexed custom character to 1-indexed
+                ++data;
+            }
+            string[y * characters_per_line + x] = data;
         }
-        string[i] = data;
+        string[y * characters_per_line + size.width] = '\n';
     }
-    // Null terminate the string
-    string[LCD_STRING_TOTAL_CHARS - 1] = '\0';
+    // Ensure string is null terminated
+    string[size.height * characters_per_line - 1] = '\0';
 
     // Restore cursor position
     lcd_set_cursor_position(old_position);
@@ -178,13 +177,17 @@ void lcd_backlight(bool power) {
 }
 
 void lcd_set_cursor_position(struct LCDPosition position) {
-    if (position.line) {
+    if (position.line % 2 != 0) {
         position.offset += LCD_SECOND_LINE_DDRAM;
+    }
+    if (position.line >= 2) {
+        position.offset += LCD_BOTTOM_HALF_OFFSET;
     }
     _lcd_set_ddram_address(position.offset);
 }
 
-void lcd_write(const char *message) {
+void lcd_write(struct LCDSize size, const char *message) {
+    uint8_t last_line = lcd_get_cursor_position().line;
     for (const char *p = message; *p != 0; p++) {
         char c = *p;
         if (c >= '\x01' && c <= '\x08') {
@@ -196,10 +199,14 @@ void lcd_write(const char *message) {
             lcd_transmit_data(true, (uint8_t)c);
         }
         struct LCDPosition position = lcd_get_cursor_position();
-        if (c == '\n' || position.offset >= LCD_SCREEN_WIDTH) {
+        if (c == '\n' || position.offset >= size.width || position.line != last_line) {
             // Move to first character of next line
             lcd_set_cursor_position(
-                (struct LCDPosition){.line = !position.line, .offset = 0});
+                (struct LCDPosition){
+                    .line = ++last_line % size.height,
+                    .offset = 0
+                }
+            );
         }
     }
 }
