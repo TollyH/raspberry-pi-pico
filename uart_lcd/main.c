@@ -54,8 +54,8 @@ static void command_set_size(int argc, char *argv[], struct LCDSize *size) {
         printf("The first argument to the #set_size command must be 1 digit long.\n");
         return;
     }
-    if (height < 1 || height > 4) {
-        printf("The first argument to the #set_size command must be between 1 and 4.\n");
+    if (height < 1 || height > LCD_SCREEN_MAX_HEIGHT) {
+        printf("The first argument to the #set_size command must be between 1 and %d.\n", LCD_SCREEN_MAX_HEIGHT);
         return;
     }
 
@@ -70,8 +70,8 @@ static void command_set_size(int argc, char *argv[], struct LCDSize *size) {
         printf("The second argument to the #set_size command must be 1 or 2 digits long.\n");
         return;
     }
-    if (width < 1 || width > 20) {
-        printf("The second argument to the #set_size command must be between 1 and 20.\n");
+    if (width < 1 || width > LCD_SCREEN_MAX_WIDTH) {
+        printf("The second argument to the #set_size command must be between 1 and %d.\n", LCD_SCREEN_MAX_WIDTH);
         return;
     }
 
