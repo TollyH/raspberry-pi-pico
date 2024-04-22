@@ -12,12 +12,13 @@
 
 #define LCD_DATA_PIN_ALL 0b11111111 << LCD_DATA_PIN_START
 
-#define LCD_SCREEN_MAX_WIDTH 20
+#define LCD_SCREEN_MAX_WIDTH 40
 #define LCD_SCREEN_MAX_HEIGHT 4
+#define LCD_SCREEN_MAX_CHARS 80
+
 #define LCD_STRING_MAX_CHARS LCD_SCREEN_MAX_HEIGHT * (LCD_SCREEN_MAX_WIDTH + 1)
 
 #define LCD_SECOND_LINE_DDRAM 0x40
-#define LCD_BOTTOM_HALF_OFFSET 20
 
 #define LCD_SHORT_SLEEP_US 37
 #define LCD_LONG_SLEEP_MS 2
@@ -92,7 +93,7 @@ uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy);
 * line: 0-based line number between 0 and LCD_SCREEN_MAX_HEIGHT - 1
 * offset: 0-based position index between 0 and LCD_SCREEN_MAX_WIDTH - 1
 */
-struct LCDPosition lcd_get_cursor_position(void);
+struct LCDPosition lcd_get_cursor_position(struct LCDSize size);
 
 /*
 * Read the text currently on the screen as a C string.
@@ -157,7 +158,7 @@ void lcd_backlight(bool power);
 * line: 0-based line number between 0 and LCD_SCREEN_MAX_HEIGHT - 1
 * offset: 0-based position index between 0 and LCD_SCREEN_MAX_WIDTH - 1
 */
-void lcd_set_cursor_position(struct LCDPosition position);
+void lcd_set_cursor_position(struct LCDSize size, struct LCDPosition position);
 
 /*
 * Write a string to the display starting at the current cursor position.

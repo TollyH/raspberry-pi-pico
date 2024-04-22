@@ -75,6 +75,11 @@ static void command_set_size(int argc, char *argv[], struct LCDSize *size) {
         return;
     }
 
+    if (width * height > LCD_SCREEN_MAX_CHARS) {
+        printf("The size of the screen cannot be greater than %d characters.\n", LCD_SCREEN_MAX_CHARS);
+        return;
+    }
+
     size->height = height;
     size->width = width;
 }
@@ -351,16 +356,16 @@ static void command_setpos(int argc, char *argv[], struct LCDSize *size) {
     }
 
     lcd_set_cursor_position(
-        (struct LCDPosition){.line = line, .offset = offset});
+        *size, (struct LCDPosition){.line = line, .offset = offset});
 }
 
-static void command_getpos(int argc, char *argv[]) {
+static void command_getpos(int argc, char *argv[], struct LCDSize *size) {
     if (argc != 0) {
         printf("The #getpos command takes no arguments.\n");
         return;
     }
 
-    struct LCDPosition position = lcd_get_cursor_position();
+    struct LCDPosition position = lcd_get_cursor_position(*size);
     printf("line: %d, offset: %d\n", position.line + 1, position.offset);
 }
 
@@ -526,7 +531,7 @@ int main() {
             } else if (strcmp(command, "#setpos") == 0) {
                 command_setpos(argc, argv, &lcd_size);
             } else if (strcmp(command, "#getpos") == 0) {
-                command_getpos(argc, argv);
+                command_getpos(argc, argv, &lcd_size);
             } else if (strcmp(command, "#read") == 0) {
                 command_read(argc, argv, &lcd_size);
             } else if (strcmp(command, "#raw_tx") == 0) {

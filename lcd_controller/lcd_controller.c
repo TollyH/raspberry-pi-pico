@@ -70,12 +70,12 @@ uint8_t lcd_receive_data(bool rs_value, bool wait_for_not_busy) {
     return data;
 }
 
-struct LCDPosition lcd_get_cursor_position(void) {
+struct LCDPosition lcd_get_cursor_position(struct LCDSize size) {
     uint8_t address = _lcd_get_address();
 
     uint8_t mod_second_line = address % LCD_SECOND_LINE_DDRAM;
     uint8_t line;
-    if (mod_second_line >= LCD_BOTTOM_HALF_OFFSET) {
+    if (mod_second_line >= size.width) {
         line = address >= LCD_SECOND_LINE_DDRAM ? 3 : 2;
     } else {
         line = address >= LCD_SECOND_LINE_DDRAM ? 1 : 0;
@@ -83,18 +83,19 @@ struct LCDPosition lcd_get_cursor_position(void) {
 
     return (struct LCDPosition){
         .line = line,
-        .offset = mod_second_line % LCD_BOTTOM_HALF_OFFSET
+        .offset = mod_second_line % size.width
     };
 }
 
 void lcd_read(struct LCDSize size, char *string) {
-    // Store old cursor position to return to later
-    struct LCDPosition old_position = lcd_get_cursor_position();
+    // Store old DDRAM address to return to later
+    uint8_t old_address = _lcd_get_address();
 
     int characters_per_line = size.width + 1;
 
     for (int y = 0; y < size.height; y++) {
-        lcd_set_cursor_position((struct LCDPosition){.line = y, .offset = 0});
+        lcd_set_cursor_position(size,
+            (struct LCDPosition){.line = y, .offset = 0});
         for (int x = 0; x < size.width; x++) {
             // Get character data
             // (display will automatically move to next character)
@@ -110,13 +111,13 @@ void lcd_read(struct LCDSize size, char *string) {
     // Ensure string is null terminated
     string[size.height * characters_per_line - 1] = '\0';
 
-    // Restore cursor position
-    lcd_set_cursor_position(old_position);
+    // Restore DDRAM address
+    _lcd_set_ddram_address(old_address);
 }
 
 void lcd_get_custom_char(uint8_t char_number, uint8_t *pixels) {
-    // Store old cursor position to return to later
-    struct LCDPosition old_position = lcd_get_cursor_position();
+    // Store old DDRAM address to return to later
+    uint8_t old_address = _lcd_get_address();
 
     // Set address in CGRAM to that of address for this character
     _lcd_set_cgram_address(char_number * 8);
@@ -126,8 +127,8 @@ void lcd_get_custom_char(uint8_t char_number, uint8_t *pixels) {
         pixels[i] = lcd_receive_data(true, true);
     }
 
-    // Restore cursor position
-    lcd_set_cursor_position(old_position);
+    // Restore DDRAM address
+    _lcd_set_ddram_address(old_address);
 }
 
 void lcd_transmit_data(bool rs_value, uint8_t data) {
@@ -176,18 +177,18 @@ void lcd_backlight(bool power) {
     gpio_put(LCD_A_PIN, power);
 }
 
-void lcd_set_cursor_position(struct LCDPosition position) {
+void lcd_set_cursor_position(struct LCDSize size, struct LCDPosition position) {
     if (position.line % 2 != 0) {
         position.offset += LCD_SECOND_LINE_DDRAM;
     }
     if (position.line >= 2) {
-        position.offset += LCD_BOTTOM_HALF_OFFSET;
+        position.offset += size.width;
     }
     _lcd_set_ddram_address(position.offset);
 }
 
 void lcd_write(struct LCDSize size, const char *message) {
-    uint8_t last_line = lcd_get_cursor_position().line;
+    uint8_t last_line = lcd_get_cursor_position(size).line;
     for (const char *p = message; *p != 0; p++) {
         char c = *p;
         if (c >= '\x01' && c <= '\x08') {
@@ -198,10 +199,10 @@ void lcd_write(struct LCDSize size, const char *message) {
         if (c != '\n') {
             lcd_transmit_data(true, (uint8_t)c);
         }
-        struct LCDPosition position = lcd_get_cursor_position();
+        struct LCDPosition position = lcd_get_cursor_position(size);
         if (c == '\n' || position.offset >= size.width || position.line != last_line) {
             // Move to first character of next line
-            lcd_set_cursor_position(
+            lcd_set_cursor_position(size,
                 (struct LCDPosition){
                     .line = ++last_line % size.height,
                     .offset = 0
@@ -212,9 +213,9 @@ void lcd_write(struct LCDSize size, const char *message) {
 }
 
 void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
-    // Store old cursor position to return to later
+    // Store old DDRAM address to return to later
     // (setting character data requires moving cursor into CGRAM)
-    struct LCDPosition old_position = lcd_get_cursor_position();
+    uint8_t old_address = _lcd_get_address();
 
     // Set address in CGRAM to that of address for this character
     _lcd_set_cgram_address(char_number * 8);
@@ -224,6 +225,6 @@ void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
         lcd_transmit_data(true, pixels[i] & 0b11111);
     }
 
-    // Restore cursor position
-    lcd_set_cursor_position(old_position);
+    // Restore DDRAM address
+    _lcd_set_ddram_address(old_address);
 }
