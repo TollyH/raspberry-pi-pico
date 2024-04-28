@@ -137,11 +137,10 @@ void lcd_transmit_data(bool rs_value, uint8_t data) {
     gpio_put(LCD_LED_PIN, true);
 
     _lcd_set_data_direction(GPIO_OUT);
-    uint32_t mask = (uint32_t)data << LCD_DATA_PIN_START;
+    uint32_t gpio_data = (uint32_t)data << LCD_DATA_PIN_START;
     gpio_put(LCD_RS_PIN, rs_value);
-    gpio_set_mask(mask);
+    gpio_put_masked(LCD_DATA_PIN_ALL, gpio_data);
     _lcd_cycle_enable_line();
-    gpio_clr_mask(mask);
 
     sleep_us(LCD_SHORT_SLEEP_US);
     gpio_put(LCD_LED_PIN, false);
