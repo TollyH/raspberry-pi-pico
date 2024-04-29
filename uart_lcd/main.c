@@ -182,7 +182,7 @@ static void command_scroll(int argc, char *argv[]) {
     } else if (strcmp("s", argv[0]) == 0) {
         cursor_screen = true;
     } else {
-        printf("The first argument to the #scroll command must be 1 or 2.\n");
+        printf("The first argument to the #scroll command must be c or s.\n");
         return;
     }
 
@@ -192,7 +192,7 @@ static void command_scroll(int argc, char *argv[]) {
     } else if (strcmp("r", argv[1]) == 0) {
         left_right = true;
     } else {
-        printf("The second argument to the #scroll command must be 8 or 11.\n");
+        printf("The second argument to the #scroll command must be l or r.\n");
         return;
     }
 
