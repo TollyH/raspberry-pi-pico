@@ -115,7 +115,7 @@ void lcd_read(struct LCDSize size, char *string) {
     _lcd_set_ddram_address(old_address);
 }
 
-void lcd_get_custom_char(uint8_t char_number, uint8_t *pixels) {
+void lcd_get_custom_char(uint8_t char_number, uint8_t pixels[static 8]) {
     // Store old DDRAM address to return to later
     uint8_t old_address = _lcd_get_address();
 
@@ -211,7 +211,7 @@ void lcd_write(struct LCDSize size, const char *message) {
     }
 }
 
-void lcd_define_custom_char(uint8_t char_number, const uint8_t *pixels) {
+void lcd_define_custom_char(uint8_t char_number, uint8_t pixels[const static 8]) {
     // Store old DDRAM address to return to later
     // (setting character data requires moving cursor into CGRAM)
     uint8_t old_address = _lcd_get_address();
